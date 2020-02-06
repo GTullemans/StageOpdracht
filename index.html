@@ -1,0 +1,236 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Cut the rope StageOpdracht</title>
+</head>
+  <script src="pixi.min.js"></script>
+  <script src="matter-js-0.14.2\build\matter.js"></script>
+  <script src="CreatRopes.js"></Script>
+  <script src="Math.js"></script>
+  <script src="CuttingRope.js"></script>
+  
+<body>
+  
+  <script>
+
+  
+
+  
+var Engine = Matter.Engine,
+    Runner = Matter.Runner,
+    Body = Matter.Body,
+    Composites = Matter.Composites,
+    Constraint = Matter.Constraint,
+    Composite = Matter.Composite, 
+    World = Matter.World, 
+    Vector = Matter.Vector, 
+    Bodies = Matter.Bodies;
+
+
+ // creat PIXI App and A Canvas
+ let app = new PIXI.Application({width: 800, height: 600});
+ document.body.appendChild(app.view);
+ app.renderer.backgroundColor = 0x00ffcc;
+
+ // EventListener for cutting the rope 
+const canvas = app.view
+canvas.addEventListener("mousedown", mouseDown, false);
+    
+
+// matter.js creating world
+var engine = Engine.create(),
+    world = engine.world;
+
+
+
+// loading the textures for the ball, the rope and the pins
+let texttennisball = PIXI.Texture.from("Images/tennilbal.png");
+let ropeTexture = PIXI.Texture.from("Images/Rope2.jpg");
+let pinTexture = PIXI.Texture.from("Images/Pin.png")
+
+// creat the ball
+let orb = new PIXI.Sprite(texttennisball);
+app.stage.addChild(orb);
+
+orb.width = 60;
+orb.height = 60;
+orb.anchor.set(0.5,0.5);
+
+
+// initialize the gameloop
+app.ticker.add(delta => gameLoop(delta));
+
+
+ 
+
+
+// CollisionFilter to make the ropes not collide with eachother and the ball
+var ropeCollisionFilter = Body.nextGroup(true);
+
+// the ball physics object
+var ball = Bodies.circle(350,175,25,
+    { collisionFilter: {group: ropeCollisionFilter},
+      frictionAir: 0.005
+    })
+
+
+var ground = Bodies.rectangle(400, 610, 810, 60, { isStatic: true });
+
+// creat the cup and draw it
+var Cup1 = Bodies.rectangle(550,520,10,100, {isStatic: true });
+var Cup2 = Bodies.rectangle(650,520,10,100, {isStatic: true});
+var Cup3 = Bodies.rectangle(600,580,110,20, {isStatic: true});
+DrawRectangle(540,470,10,100);
+DrawRectangle(640,470,10,100);
+DrawRectangle(540,570,110,20);
+
+
+World.add(engine.world, [ ground,ball,Cup1,Cup2,Cup3]);
+
+// creat the anchors and ropes (from CreatRopes.ts)
+let Anchors =  [CreateRope(100,50,ball,world,ropeCollisionFilter),
+                CreateRope(250,50,ball,world,ropeCollisionFilter),
+                CreateRope(500,200,ball,world,ropeCollisionFilter)];
+
+
+// a array for the rope sprites for futher manipulation
+var ropesprites = [];
+    
+    
+Anchors.forEach((ropecomp,j)=> {
+
+    // mak a pin on the Anchor Start
+    let pin = new PIXI.Sprite(pinTexture);
+    pin.width = 40;
+    pin.height = 40;
+    pin.anchor.set(0.5,0.5);
+
+    // get all the bodies for the rope draw the ropesprites there
+    var rope = Composite.allBodies(ropecomp);
+
+    pin.position.set(rope[0].position.x,rope[0].position.y - 3);
+      
+
+      
+      rope.forEach((part,i) => {
+        
+         var ropeSprite = new PIXI.Sprite(ropeTexture);
+         ropeSprite.width = 25;
+         ropeSprite.height = 20;
+         ropeSprite.anchor.set(0.5,0.5);
+
+         ropeSprite.position.set(part.position.x,part.position.y);
+         ropeSprite.rotation = part.angle;   
+
+         app.stage.addChild(ropeSprite);
+
+         ropesprites.push(ropeSprite)
+
+      })
+
+      app.stage.addChild(pin);
+
+    });
+ 
+   
+   
+
+
+
+
+
+
+// run the physics engine
+var runner = Runner.create();
+Runner.run(runner, engine);
+Engine.run(engine);
+
+// to just draw the win screen once
+var Won = false;
+
+ function gameLoop(delta){
+   // to make the sprites keep following the physics objects
+    orb.position.set(ball.position.x,ball.position.y);
+    orb.rotation = ball.angle;
+
+    
+    var index = 0;
+    Anchors.forEach((ropecomp,j)=> {
+
+      var rope = Composite.allBodies(ropecomp);
+
+      rope.forEach((part,i) => {
+        
+        ropesprites[index].position.set(part.position.x,part.position.y);
+        ropesprites[index].rotation = part.angle;
+       
+
+        ++index;
+      })
+    });
+
+    // if the ball is in the cup show the win text
+    if(Contains(ball.position.x,ball.position.y,Cup1.position.x,Cup2.position.x,Cup3.position.y - 50,Cup3.position.y  ) && !Won){
+      Won = true;
+      
+      
+      let style = new PIXI.TextStyle({
+        fontFamily: "Arial",
+        fontSize: 36,
+        fill: "yellow",
+        stroke: '#ffdd00',
+        strokeThickness: 4,
+        dropShadow: true,
+        dropShadowColor: "#000000",
+        dropShadowBlur: 2,
+        dropShadowAngle: Math.PI / 6,
+        dropShadowDistance: 3,
+      });
+
+      var WinningText = new PIXI.Text("Je hebt gewonnen",style);
+
+      WinningText.position.set(200,200)
+
+      app.stage.addChild(WinningText);
+    }
+   
+
+
+}
+
+
+
+
+
+// on mous down
+function mouseDown(event) {
+    var x = event.x;
+    var y = event.y;
+ 
+    x -= canvas.offsetLeft;
+    y -= canvas.offsetTop;
+
+    // a vector of the array indicis of which constraint to remove
+    var Vector = CutRope(Anchors,x,y);
+
+    var constraintToRemove = Composite.allConstraints(Anchors[Vector.x])[Vector.y];
+    Composite.remove(Anchors[Vector.x],constraintToRemove);
+    
+}
+
+function DrawRectangle(x,y,width,height){
+
+  let rectangle = new PIXI.Graphics();  
+  rectangle.beginFill(0x66CCFF);
+  rectangle.drawRect(0, 0, width, height);
+  rectangle.endFill();
+  rectangle.x = x;
+  rectangle.y = y;
+  app.stage.addChild(rectangle);
+}
+
+</script>
+  
+</body>
+</html>

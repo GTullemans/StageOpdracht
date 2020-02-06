@@ -1,0 +1,20 @@
+{
+  "name": "StageOpdracht",
+  "version": "1.0.0",
+  "description": "",
+  "main": "pixi.min.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^3.8.0-dev.20200204"
+  },
+  "dependencies": {
+    "@types/matter-js": "^0.10.9",
+    "matter-js": "^0.14.2",
+    "pixi.js": "^5.2.1"
+  }
+}
